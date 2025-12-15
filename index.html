@@ -120,15 +120,13 @@
                 document.getElementById('studentName').innerText = data.name;
 
                 // -----------------------------------------------------
-                // 💡 كود "الذكاء" الجديد لتحديد نوع الطالب
+                // 💡 كود تحديد نوع الطالب بناءً على السعر
                 // -----------------------------------------------------
-                let displayText = data.info; // الافتراضي: ما هو مكتوب في قاعدة البيانات
+                let displayText = data.info; 
 
-                // إذا كان السعر 80، نجبره يكتب "طالب عادي"
                 if (data.price == 80) {
                     displayText = "⭐ طالب حصة";
                 } 
-                // إذا لم يكن 80 وكانت الخانة فارغة، نتركها فارغة
                 else if (!displayText) {
                     displayText = ""; 
                 }
@@ -165,28 +163,73 @@
         }
     }
 
-    async function confirmAttendance() {
+    // ============================================================
+    // 🔥 الدالة المحدثة: تفهم التكرار وترسل force إذا لزم الأمر
+    // ============================================================
+    async function confirmAttendance(force = false) {
         if (!currentStudentData) return;
+        
         const price = document.getElementById('priceField').value;
         const btn = document.querySelector('.btn-confirm');
         
-        btn.innerText = "⏳..."; btn.disabled = true;
+        // تغيير نص الزر ليوضح الحالة
+        btn.innerText = force ? "جاري التكرار..." : "⏳..."; 
+        btn.disabled = true;
+
+        const payload = { 
+            id: currentStudentData.student_id || currentStudentData.id, 
+            amount: price 
+        };
+        
+        // إذا ضغط المستخدم "نعم" في رسالة التكرار، نرسل أمر القوة
+        if (force) payload.force = true;
 
         try {
             const res = await fetch(PAY_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: currentStudentData.student_id || currentStudentData.id, amount: price })
+                body: JSON.stringify(payload)
             });
 
-            if (res.ok) {
+            // قراءة الرد كـ JSON لفحص حالة duplicate
+            const responseData = await res.json();
+
+            // الحالة 1: السيرفر اكتشف تكراراً ورد برسالة "duplicate"
+            if (responseData.status === "duplicate") {
+                // تنسيق التاريخ
+                const dateObj = new Date(responseData.date);
+                const dateStr = dateObj.toLocaleDateString('ar-EG');
+                const timeStr = dateObj.toLocaleTimeString('ar-EG');
+
+                // إظهار رسالة التنبيه مع خيارين (موافق / إلغاء)
+                const userAgreed = confirm(
+                    `⚠️ تنبيه هام!\nهذا الطالب دفع مسبقاً هذا الأسبوع.\n` +
+                    `بتاريخ: ${dateStr} الساعة: ${timeStr}\n\n` +
+                    `هل تريد تسجيله مرة أخرى (دفع جديد)؟`
+                );
+
+                if (userAgreed) {
+                    // إذا وافق، نعيد المحاولة مع تفعيل "force"
+                    confirmAttendance(true);
+                }
+            } 
+            // الحالة 2: نجاح عادي (لم يجد تكراراً أو تم الإجبار)
+            else if (res.ok) { 
                 alert(`✅ تم تسجيل الحضور لـ: ${currentStudentData.name}`);
                 location.reload();
-            } else {
-                alert("❌ فشل الحفظ");
+            } 
+            else {
+                alert("❌ فشل الحفظ: حدث خطأ غير معروف");
             }
-        } catch (e) { alert("خطأ اتصال"); }
-        finally { btn.innerText = "✅ تأكيد ودفع"; btn.disabled = false; }
+
+        } catch (e) { 
+            console.error(e);
+            alert("خطأ في الاتصال بالسيرفر"); 
+        }
+        finally { 
+            btn.innerText = "✅ تأكيد ودفع"; 
+            btn.disabled = false; 
+        }
     }
 
     // --- دالة الحفظ الجديدة ---
