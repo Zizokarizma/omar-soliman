@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام السنتر الشامل</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; text-align: center; background: #f0f2f5; }
+        .container { max-width: 480px; margin: 20px auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #333; margin-bottom: 20px; }
+        
+        input { 
+            width: 100%; box-sizing: border-box; padding: 12px; margin: 8px 0; 
+            font-size: 16px; border: 2px solid #ddd; border-radius: 8px; text-align: center; 
+        }
+        input:focus { border-color: #007bff; outline: none; }
+        
+        button { 
+            width: 100%; padding: 12px; margin: 10px 0; font-size: 18px; 
+            color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; 
+        }
+        .btn-search { background: #007bff; }
+        .btn-search:hover { background: #0056b3; }
+        
+        .btn-confirm { background: #28a745; }
+        .btn-confirm:hover { background: #218838; }
+
+        .btn-new-student { background: #6c757d; margin-top: 20px; font-size: 14px; padding: 8px; }
+        .btn-new-student:hover { background: #5a6268; }
+
+        #result { margin-top: 20px; padding: 15px; border: 1px solid #e1e4e8; border-radius: 8px; background: #fafafa; display: none; }
+        .loading { color: #007bff; font-weight: bold; display: none; margin-top: 10px; }
+        .info-tag { display: inline-block; padding: 5px 10px; background: #e9ecef; border-radius: 20px; margin-bottom: 5px; font-size: 0.9em; color: #555; margin-left: 5px; }
+        .price-label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+
+        /* النافذة المنبثقة */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888;
+            width: 90%; max-width: 400px; border-radius: 10px; position: relative;
+        }
+        .close-btn {
+            position: absolute; left: 15px; top: 10px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;
+        }
+        .btn-save { background: #17a2b8; }
+        .btn-save:hover { background: #138496; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>تسجيل دخول الطالب</h2>
+    
+    <input type="text" id="studentCode" placeholder="امسح الباركود أو اكتب الكود" autofocus>
+    <button class="btn-search" onclick="checkStudent()">🔍 بحث عن طالب</button>
+
+    <p class="loading" id="loader">جاري البحث...</p>
+
+    <div id="result">
+        <h3 id="studentName" style="color: #2c3e50; margin: 0 0 10px 0;"></h3>
+        
+        <div>
+            <span id="studentInfo" class="info-tag"></span>
+            <span id="studentPhone" class="info-tag" style="background:#e3f2fd; color:#0d47a1;"></span>
+        </div>
+        <div id="parentPhoneDisplay" class="info-tag" style="background:#fff3cd; color:#856404; display:block; margin-top:5px;"></div>
+        
+        <label class="price-label">المبلغ المطلوب تحصيله:</label>
+        <input type="number" id="priceField">
+        
+        <button class="btn-confirm" onclick="confirmAttendance()">✅ تأكيد ودفع</button>
+    </div>
+
+    <button class="btn-new-student" onclick="openModal()">➕ إضافة طالب جديد</button>
+</div>
+
+<div id="addModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h3>إضافة طالب جديد</h3>
+        
+        <input type="number" id="new_id" placeholder="كود الطالب (الباركود)">
+        <input type="text" id="new_name" placeholder="اسم الطالب">
+        <input type="text" id="new_phone" placeholder="رقم الطالب">
+        <input type="text" id="new_parent_phone" placeholder="رقم ولي الأمر 👨‍👦"> 
+        <input type="text" id="new_info" placeholder="الثمن المدفوع">
+        <input type="number" id="new_price" placeholder="سعر الحصة الافتراضي">
+        
+        <button class="btn-save" onclick="saveNewStudent()" id="saveBtn">💾 حفظ البيانات</button>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // 🛑 روابط الـ n8n الخاصة بك
+    // ============================================================
+    const SEARCH_URL = "https://n8ncourse.online/webhook/9e3b77e3-4f72-4e43-96ca-9a8bbfc70435"; 
+    const PAY_URL    = "https://n8ncourse.online/webhook/35849c13-abde-4ffd-a0a9-a319e442e205"; 
+    const ADD_URL    = "https://n8ncourse.online/webhook/8109b64b-de98-4323-bb17-19dba9466fb6"; 
+    // ============================================================
+
+    let currentStudentData = null;
+
+    async function checkStudent() {
+        const id = document.getElementById('studentCode').value.trim();
+        if(!id) return alert("أدخل الكود أولاً");
+
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('result').style.display = 'none';
+
+        try {
+            const response = await fetch(`${SEARCH_URL}?id=${id}`);
+            let data = await response.json();
+            if (Array.isArray(data)) data = data[0];
+
+            if (data && (data.name || data.student_id)) {
+                document.getElementById('studentName').innerText = data.name;
+
+                // -----------------------------------------------------
+                // 💡 كود "الذكاء" الجديد لتحديد نوع الطالب
+                // -----------------------------------------------------
+                let displayText = data.info; // الافتراضي: ما هو مكتوب في قاعدة البيانات
+
+                // إذا كان السعر 80، نجبره يكتب "طالب عادي"
+                if (data.price == 80) {
+                    displayText = "⭐ طالب حصة";
+                } 
+                // إذا لم يكن 80 وكانت الخانة فارغة، نتركها فارغة
+                else if (!displayText) {
+                    displayText = ""; 
+                }
+                
+                document.getElementById('studentInfo').innerText = displayText;
+                // -----------------------------------------------------
+
+                document.getElementById('studentPhone').innerText = data.phone ? "📞 " + data.phone : "";
+                
+                // عرض رقم ولي الأمر
+                const pPhone = data.parent_phone;
+                const pDisplay = document.getElementById('parentPhoneDisplay');
+                if(pPhone) {
+                    pDisplay.innerText = "👨‍👦 ولي الأمر: " + pPhone;
+                    pDisplay.style.display = "block";
+                } else {
+                    pDisplay.style.display = "none";
+                }
+
+                document.getElementById('priceField').value = data.price;
+                currentStudentData = data;
+                document.getElementById('result').style.display = 'block';
+            } else {
+                if(confirm("الطالب غير موجود.. هل تريد إضافته الآن؟")) {
+                    openModal();
+                    document.getElementById('new_id').value = id;
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            alert("خطأ في الاتصال");
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    async function confirmAttendance() {
+        if (!currentStudentData) return;
+        const price = document.getElementById('priceField').value;
+        const btn = document.querySelector('.btn-confirm');
+        
+        btn.innerText = "⏳..."; btn.disabled = true;
+
+        try {
+            const res = await fetch(PAY_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: currentStudentData.student_id || currentStudentData.id, amount: price })
+            });
+
+            if (res.ok) {
+                alert(`✅ تم تسجيل الحضور لـ: ${currentStudentData.name}`);
+                location.reload();
+            } else {
+                alert("❌ فشل الحفظ");
+            }
+        } catch (e) { alert("خطأ اتصال"); }
+        finally { btn.innerText = "✅ تأكيد ودفع"; btn.disabled = false; }
+    }
+
+    // --- دالة الحفظ الجديدة ---
+    async function saveNewStudent() {
+        const id = document.getElementById('new_id').value;
+        const name = document.getElementById('new_name').value;
+        const phone = document.getElementById('new_phone').value;
+        const parent_phone = document.getElementById('new_parent_phone').value; 
+        const info = document.getElementById('new_info').value;
+        const price = document.getElementById('new_price').value;
+
+        if (!id || !name || !price) return alert("البيانات ناقصة");
+
+        const btn = document.getElementById('saveBtn');
+        btn.innerText = "جاري الحفظ..."; btn.disabled = true;
+
+        try {
+            const res = await fetch(ADD_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, name, phone, parent_phone, info, price }) 
+            });
+
+            if (res.ok) {
+                alert("✅ تم إضافة الطالب بنجاح!");
+                closeModal();
+                document.getElementById('studentCode').value = id;
+                checkStudent(); 
+            } else {
+                alert("❌ خطأ: لم يتم الحفظ");
+            }
+        } catch (e) { alert("خطأ اتصال"); }
+        finally { btn.innerText = "💾 حفظ البيانات"; btn.disabled = false; }
+    }
+
+    function openModal() { document.getElementById('addModal').style.display = "block"; }
+    function closeModal() { document.getElementById('addModal').style.display = "none"; }
+    window.onclick = function(e) { if (e.target == document.getElementById('addModal')) closeModal(); }
+    
+    document.getElementById("studentCode").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") checkStudent();
+    });
+</script>
+
+</body>
+</html>
