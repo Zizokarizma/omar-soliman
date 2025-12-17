@@ -5,273 +5,478 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام السنتر الشامل</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; text-align: center; background: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; text-align: center; background: #f0f2f5; color: #333; }
         .container { max-width: 480px; margin: 20px auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #333; margin-bottom: 20px; }
-        
-        input { 
-            width: 100%; box-sizing: border-box; padding: 12px; margin: 8px 0; 
-            font-size: 16px; border: 2px solid #ddd; border-radius: 8px; text-align: center; 
-        }
-        input:focus { border-color: #007bff; outline: none; }
-        
-        button { 
-            width: 100%; padding: 12px; margin: 10px 0; font-size: 18px; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; 
-        }
-        .btn-search { background: #007bff; }
-        .btn-search:hover { background: #0056b3; }
-        
-        .btn-confirm { background: #28a745; }
-        .btn-confirm:hover { background: #218838; }
-
+        h2 { color: #2c3e50; margin-bottom: 20px; }
+        input, select { width: 100%; box-sizing: border-box; padding: 12px; margin: 8px 0; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; text-align: center; transition: border 0.3s; background: #fff; }
+        input:focus, select:focus { border-color: #007bff; outline: none; }
+        button { width: 100%; padding: 12px; margin: 10px 0; font-size: 18px; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
+        .btn-search { background: #007bff; } .btn-search:hover { background: #0056b3; }
+        .btn-confirm { background: #28a745; } .btn-confirm:hover { background: #218838; }
         .btn-new-student { background: #6c757d; margin-top: 20px; font-size: 14px; padding: 8px; }
-        .btn-new-student:hover { background: #5a6268; }
-
+        .btn-edit { background: none; border: none; color: #ffc107; cursor: pointer; font-size: 20px; padding: 0 10px; transition: 0.3s; }
+        .btn-delete { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 20px; padding: 0 10px; transition: 0.3s; }
+        .btn-edit:hover, .btn-delete:hover { transform: scale(1.2); }
         #result { margin-top: 20px; padding: 15px; border: 1px solid #e1e4e8; border-radius: 8px; background: #fafafa; display: none; }
-        .loading { color: #007bff; font-weight: bold; display: none; margin-top: 10px; }
-        .info-tag { display: inline-block; padding: 5px 10px; background: #e9ecef; border-radius: 20px; margin-bottom: 5px; font-size: 0.9em; color: #555; margin-left: 5px; }
+        .info-tag { display: inline-block; padding: 5px 12px; background: #e9ecef; border-radius: 20px; margin: 5px; font-size: 0.95em; color: #555; }
         .price-label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
-
-        /* النافذة المنبثقة */
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .modal-content {
-            background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888;
-            width: 90%; max-width: 400px; border-radius: 10px; position: relative;
-        }
-        .close-btn {
-            position: absolute; left: 15px; top: 10px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer;
-        }
+        .recent-activity { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; text-align: right; }
+        .recent-activity h3 { font-size: 16px; color: #555; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: right; }
+        th { background-color: #f8f9fa; color: #666; }
+        .amount-col { color: #28a745; font-weight: bold; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 400px; border-radius: 12px; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+        .close-btn { position: absolute; left: 15px; top: 10px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
         .btn-save { background: #17a2b8; }
-        .btn-save:hover { background: #138496; }
+        .new-id-display { background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #c3e6cb; display: none; font-weight: bold; }
+        .field-label { display: block; text-align: right; font-size: 12px; color: #666; margin-top: 5px; margin-right: 5px; }
+
+        /* تنسيق العداد العائم الجديد */
+        #floatingTimer {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
     </style>
 </head>
 <body>
 
+<div id="floatingTimer">
+    <span>⏱️</span> <span id="timeDisplay">30:00</span>
+</div>
+
 <div class="container">
     <h2>تسجيل دخول الطالب</h2>
     
-    <input type="text" id="studentCode" placeholder="امسح الباركود أو اكتب الكود" autofocus>
+    <input type="text" id="studentCode" placeholder="امسح الباركود أو اكتب الكود" autofocus autocomplete="off">
     <button class="btn-search" onclick="checkStudent()">🔍 بحث عن طالب</button>
-
-    <p class="loading" id="loader">جاري البحث...</p>
+    <p class="loading" id="loader" style="display:none; color: #007bff;">جاري البحث...</p>
 
     <div id="result">
-        <h3 id="studentName" style="color: #2c3e50; margin: 0 0 10px 0;"></h3>
-        
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <h3 id="studentName" style="color: #2c3e50; margin: 0;"></h3>
+            <button class="btn-edit" onclick="openEditModal()" title="تعديل">✏️</button>
+            <button class="btn-delete" onclick="deleteStudent()" title="حذف">🗑️</button>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <span id="studentGrade" class="info-tag" style="background:#e8f5e9; color:#2e7d32;"></span>
+            <span id="studentGroup" class="info-tag" style="background:#fff3e0; color:#ef6c00;"></span>
+        </div>
         <div>
-            <span id="studentInfo" class="info-tag"></span>
             <span id="studentPhone" class="info-tag" style="background:#e3f2fd; color:#0d47a1;"></span>
         </div>
-        <div id="parentPhoneDisplay" class="info-tag" style="background:#fff3cd; color:#856404; display:block; margin-top:5px;"></div>
+        <div id="parentPhoneDisplay" class="info-tag" style="background:#fff3cd; color:#856404; display:none; width: fit-content; margin: 10px auto;"></div>
         
-        <label class="price-label">المبلغ المطلوب تحصيله:</label>
-        <input type="number" id="priceField">
-        
+        <label class="price-label">المبلغ المطلوب:</label>
+        <input type="number" id="priceField" inputmode="numeric">
         <button class="btn-confirm" onclick="confirmAttendance()">✅ تأكيد ودفع</button>
     </div>
 
-    <button class="btn-new-student" onclick="openModal()">➕ إضافة طالب جديد</button>
+    <div class="recent-activity">
+        <h3>📝 آخر عمليات الدفع</h3>
+        <table id="activityTable">
+            <thead>
+                <tr>
+                    <th>الكود</th>
+                    <th>الطالب</th>
+                    <th>المبلغ</th>
+                    <th>الوقت</th>
+                </tr>
+            </thead>
+            <tbody id="activityBody"><tr><td colspan="4">جاري التحميل...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+<div style="display: flex; gap: 10px; margin-top: 20px;">
+    <button class="btn-new-student" onclick="openModal()" style="flex: 1;">➕ إضافة طالب</button>
+    <button class="btn-new-student" onclick="showDailyStats()" style="background: #6f42c1; flex: 1;">📊 تقرير اليوم</button>
 </div>
 
 <div id="addModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
         <h3>إضافة طالب جديد</h3>
-        
-        <input type="number" id="new_id" placeholder="كود الطالب (الباركود)">
-        <input type="text" id="new_name" placeholder="اسم الطالب">
-        <input type="text" id="new_phone" placeholder="رقم الطالب">
-        <input type="text" id="new_parent_phone" placeholder="رقم ولي الأمر 👨‍👦"> 
-        <input type="text" id="new_info" placeholder="الثمن المدفوع">
-        <input type="number" id="new_price" placeholder="سعر الحصة الافتراضي">
-        
-        <button class="btn-save" onclick="saveNewStudent()" id="saveBtn">💾 حفظ البيانات</button>
+        <div class="new-id-display" id="generatedIdMsg"></div>
+        <input type="text" id="new_name" placeholder="اسم الطالب (رباعي)">
+        <input type="tel" id="new_phone" placeholder="رقم الطالب">
+        <input type="tel" id="new_parent_phone" placeholder="رقم ولي الأمر 👨‍👦"> 
+        <label class="field-label">المرحلة الدراسية:</label>
+        <select id="new_grade">
+            <option value="غير محدد">-- اختر المرحلة --</option>
+            <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
+            <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
+            <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+        </select>
+        <label class="field-label">المجموعة:</label>
+        <select id="new_group">
+            <option value="عام">مجموعة عامة</option>
+            <option value="السبت/الثلاثاء">السبت / الثلاثاء</option>
+            <option value="الأحد/الأربعاء">الأحد / الأربعاء</option>
+            <option value="الاثنين/الخميس">الاثنين / الخميس</option>
+        </select>
+        <label class="field-label">نوع الاشتراك:</label>
+        <select id="new_sub_type" onchange="updateDefaultPrice()">
+            <option value="per_class">نظام الحصة</option>
+            <option value="monthly">اشتراك شهري</option>
+        </select>
+        <label class="field-label">السعر الافتراضي:</label>
+        <input type="number" id="new_price" value="80">
+        <button class="btn-save" onclick="saveNewStudent()" id="saveBtn">💾 حفظ وتوليد كود</button>
+    </div>
+</div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeEditModal()">&times;</span>
+        <h3 style="color: #ffc107;">✏️ تعديل بيانات</h3>
+        <input type="text" id="edit_name" placeholder="الاسم">
+        <input type="tel" id="edit_phone" placeholder="رقم الطالب">
+        <input type="tel" id="edit_parent_phone" placeholder="ولي الأمر">
+        <input type="number" id="edit_price" placeholder="السعر">
+        <button class="btn-save" onclick="saveEdit()" id="editBtn" style="background: #ffc107; color: #000;">حفظ التعديلات</button>
+    </div>
+</div>
+
+<div id="statsModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeStatsModal()">&times;</span>
+        <h3 style="color: #6f42c1;">📊 إحصائيات اليوم</h3>
+        <div style="margin:20px 0; padding:15px; background:#f8f9fa; border-radius:10px;">
+            <p>عدد الحضور</p><h2 id="statsCount">0</h2>
+        </div>
+        <div style="margin:20px 0; padding:15px; background:#fff3cd; border-radius:10px;">
+            <p>إجمالي التحصيل</p><h2 id="statsTotal">0 ج.م</h2>
+        </div>
     </div>
 </div>
 
 <script>
-    // ============================================================
-    // 🛑 روابط الـ n8n الخاصة بك
-    // ============================================================
+    let currentStudentData = null;
+    let confirmationWebhookUrl = ''; 
+
+    // ==========================================
+    // 🔗 الروابط
+    // ==========================================
     const SEARCH_URL = "https://n8ncourse.online/webhook/9e3b77e3-4f72-4e43-96ca-9a8bbfc70435"; 
     const PAY_URL    = "https://n8ncourse.online/webhook/35849c13-abde-4ffd-a0a9-a319e442e205"; 
-    const ADD_URL    = "https://n8ncourse.online/webhook/8109b64b-de98-4323-bb17-19dba9466fb6"; 
-    // ============================================================
+    const ADD_URL    = "https://n8ncourse.online/webhook/8109b64b-de98-4323-bb17-19dba9466fb6";
+    const RECENT_URL = "https://n8ncourse.online/webhook/recent-activity"; 
+    const STATS_URL  = "https://n8ncourse.online/webhook/daily-stats"; 
+    const UPDATE_URL = "https://n8ncourse.online/webhook/update-student"; 
+    const DELETE_URL = "https://n8ncourse.online/webhook/delete-student"; 
 
-    let currentStudentData = null;
+    function updateDefaultPrice() {
+        const type = document.getElementById('new_sub_type').value;
+        const priceInput = document.getElementById('new_price');
+        if (type === 'monthly') priceInput.value = 300; else priceInput.value = 80;
+    }
+
+    window.onload = function() {
+        fetchRecentActivity();
+        document.getElementById('studentCode').focus();
+    };
 
     async function checkStudent() {
-        const id = document.getElementById('studentCode').value.trim();
+        const idInput = document.getElementById('studentCode');
+        const id = idInput.value.trim();
         if(!id) return alert("أدخل الكود أولاً");
-
+        
         document.getElementById('loader').style.display = 'block';
         document.getElementById('result').style.display = 'none';
-
+        
         try {
             const response = await fetch(`${SEARCH_URL}?id=${id}`);
             let data = await response.json();
             if (Array.isArray(data)) data = data[0];
-
-            if (data && (data.name || data.student_id)) {
+            const retrievedID = data.id || data.student_id;
+            
+            if (data && retrievedID) {
                 document.getElementById('studentName').innerText = data.name;
-
-                // -----------------------------------------------------
-                // 💡 كود تحديد نوع الطالب بناءً على السعر
-                // -----------------------------------------------------
-                let displayText = data.info; 
-
-                if (data.price == 80) {
-                    displayText = "⭐ طالب حصة";
-                } 
-                else if (!displayText) {
-                    displayText = ""; 
-                }
-                
-                document.getElementById('studentInfo').innerText = displayText;
-                // -----------------------------------------------------
-
+                document.getElementById('studentGrade').innerText = data.grade_level || "غير محدد";
+                document.getElementById('studentGroup').innerText = data.group_name || "عام";
+                document.getElementById('studentGrade').style.display = data.grade_level ? "inline-block" : "none";
                 document.getElementById('studentPhone').innerText = data.phone ? "📞 " + data.phone : "";
                 
-                // عرض رقم ولي الأمر
-                const pPhone = data.parent_phone;
                 const pDisplay = document.getElementById('parentPhoneDisplay');
-                if(pPhone) {
-                    pDisplay.innerText = "👨‍👦 ولي الأمر: " + pPhone;
-                    pDisplay.style.display = "block";
+                pDisplay.innerText = data.parent_phone ? "👨‍👦 ولي الأمر: " + data.parent_phone : "";
+                pDisplay.style.display = data.parent_phone ? "block" : "none";
+
+                // منطق المحفظة
+                let baseCost = (data.subscription_type === 'monthly') ? 0 : (data.custom_rate || 80);
+                let wallet = data.wallet_balance || 0;
+                let requiredAmount = baseCost - wallet;
+                if (requiredAmount < 0) requiredAmount = 0; 
+
+                const priceLabel = document.querySelector('.price-label');
+                if (wallet < 0) {
+                    priceLabel.innerHTML = `المبلغ المطلوب: <span style="color:red; font-size:12px;">(عليه دين قديم: ${Math.abs(wallet)} ج.م)</span>`;
+                } else if (wallet > 0) {
+                    priceLabel.innerHTML = `المبلغ المطلوب: <span style="color:green; font-size:12px;">(له رصيد سابق: ${wallet} ج.م)</span>`;
                 } else {
-                    pDisplay.style.display = "none";
+                    priceLabel.innerHTML = `المبلغ المطلوب تحصيله:`;
                 }
-
-                document.getElementById('priceField').value = data.price;
-                currentStudentData = data;
+                
+                document.getElementById('priceField').value = requiredAmount;
+                currentStudentData = { ...data, id: retrievedID };
                 document.getElementById('result').style.display = 'block';
+                document.getElementById('priceField').focus();
+
             } else {
-                if(confirm("الطالب غير موجود.. هل تريد إضافته الآن؟")) {
-                    openModal();
-                    document.getElementById('new_id').value = id;
-                }
+                if(confirm("الطالب غير موجود.. إضافته؟")) { openModal(); }
+                idInput.value = ''; idInput.focus();
             }
-        } catch (error) {
-            console.error(error);
-            alert("خطأ في الاتصال");
-        } finally {
-            document.getElementById('loader').style.display = 'none';
-        }
+        } catch (error) { console.error(error); alert("خطأ في البحث"); } 
+        finally { document.getElementById('loader').style.display = 'none'; }
     }
 
-    // ============================================================
-    // 🔥 الدالة المحدثة: تفهم التكرار وترسل force إذا لزم الأمر
-    // ============================================================
-    async function confirmAttendance(force = false) {
-        if (!currentStudentData) return;
-        
-        const price = document.getElementById('priceField').value;
-        const btn = document.querySelector('.btn-confirm');
-        
-        // تغيير نص الزر ليوضح الحالة
-        btn.innerText = force ? "جاري التكرار..." : "⏳..."; 
-        btn.disabled = true;
-
-        const payload = { 
-            id: currentStudentData.student_id || currentStudentData.id, 
-            amount: price 
-        };
-        
-        // إذا ضغط المستخدم "نعم" في رسالة التكرار، نرسل أمر القوة
-        if (force) payload.force = true;
-
-        try {
-            const res = await fetch(PAY_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            // قراءة الرد كـ JSON لفحص حالة duplicate
-            const responseData = await res.json();
-
-            // الحالة 1: السيرفر اكتشف تكراراً ورد برسالة "duplicate"
-            if (responseData.status === "duplicate") {
-                // تنسيق التاريخ
-                const dateObj = new Date(responseData.date);
-                const dateStr = dateObj.toLocaleDateString('ar-EG');
-                const timeStr = dateObj.toLocaleTimeString('ar-EG');
-
-                // إظهار رسالة التنبيه مع خيارين (موافق / إلغاء)
-                const userAgreed = confirm(
-                    `⚠️ تنبيه هام!\nهذا الطالب دفع مسبقاً هذا الأسبوع.\n` +
-                    `بتاريخ: ${dateStr} الساعة: ${timeStr}\n\n` +
-                    `هل تريد تسجيله مرة أخرى (دفع جديد)؟`
-                );
-
-                if (userAgreed) {
-                    // إذا وافق، نعيد المحاولة مع تفعيل "force"
-                    confirmAttendance(true);
-                }
-            } 
-            // الحالة 2: نجاح عادي (لم يجد تكراراً أو تم الإجبار)
-            else if (res.ok) { 
-                alert(`✅ تم تسجيل الحضور لـ: ${currentStudentData.name}`);
-                location.reload();
-            } 
-            else {
-                alert("❌ فشل الحفظ: حدث خطأ غير معروف");
-            }
-
-        } catch (e) { 
-            console.error(e);
-            alert("خطأ في الاتصال بالسيرفر"); 
-        }
-        finally { 
-            btn.innerText = "✅ تأكيد ودفع"; 
-            btn.disabled = false; 
-        }
-    }
-
-    // --- دالة الحفظ الجديدة ---
     async function saveNewStudent() {
-        const id = document.getElementById('new_id').value;
         const name = document.getElementById('new_name').value;
-        const phone = document.getElementById('new_phone').value;
-        const parent_phone = document.getElementById('new_parent_phone').value; 
-        const info = document.getElementById('new_info').value;
         const price = document.getElementById('new_price').value;
+        const grade = document.getElementById('new_grade').value;
+        const group = document.getElementById('new_group').value;
+        const subType = document.getElementById('new_sub_type').value;
 
-        if (!id || !name || !price) return alert("البيانات ناقصة");
+        if (!name || !price) return alert("الاسم والسعر مطلوبان");
 
         const btn = document.getElementById('saveBtn');
+        const originalText = btn.innerText;
         btn.innerText = "جاري الحفظ..."; btn.disabled = true;
 
         try {
             const res = await fetch(ADD_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, name, phone, parent_phone, info, price }) 
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    name: name,
+                    phone: document.getElementById('new_phone').value, 
+                    parent_phone: document.getElementById('new_parent_phone').value, 
+                    price: Number(price),
+                    grade_level: grade,
+                    group_name: group,
+                    subscription_type: subType
+                })
             });
-
-            if (res.ok) {
-                alert("✅ تم إضافة الطالب بنجاح!");
+            const data = await res.json();
+            if (res.ok && data.id) {
+                alert(`✅ تم! الكود: ${data.id}`);
                 closeModal();
-                document.getElementById('studentCode').value = id;
-                checkStudent(); 
-            } else {
-                alert("❌ خطأ: لم يتم الحفظ");
-            }
-        } catch (e) { alert("خطأ اتصال"); }
-        finally { btn.innerText = "💾 حفظ البيانات"; btn.disabled = false; }
+                document.getElementById('studentCode').value = data.id;
+                checkStudent();
+            } else { alert("❌ خطأ"); }
+        } catch (e) { alert("خطأ اتصال"); } finally { btn.innerText = originalText; btn.disabled = false; }
+    }
+
+    async function confirmAttendance() {
+        if (!currentStudentData) return;
+        const price = Number(document.getElementById('priceField').value);
+        const btn = document.querySelector('.btn-confirm');
+        const originalText = btn.innerText;
+        btn.innerText = "⏳..."; btn.disabled = true;
+        try {
+            const res = await fetch(PAY_URL, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: currentStudentData.id, amount: price })
+            });
+            const responseData = await res.json();
+            if (responseData.status === "duplicate_warning") {
+                confirmationWebhookUrl = responseData.Confirmation_Webhook_URL || responseData.confirmation_url;
+                if(confirm("⚠️ دفع مسبقاً! هل تريد التسجيل مرة أخرى؟")) {
+                    await sendConfirmationRequest(currentStudentData.id, price, btn);
+                } else { btn.innerText = originalText; btn.disabled = false; }
+            } else if (responseData.status === "success" || res.ok) {
+                showSuccessAndReset(`✅ تم التسجيل!`);
+                fetchRecentActivity(); 
+            } else { alert("❌ فشل"); btn.innerText = originalText; btn.disabled = false; }
+        } catch (e) { alert("خطأ اتصال"); btn.innerText = originalText; btn.disabled = false; }
+    }
+
+    async function sendConfirmationRequest(id, amount, btnElement) {
+        if (!confirmationWebhookUrl) return alert("خطأ رابط");
+        try {
+            const res = await fetch(confirmationWebhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, amount }) });
+            if (res.ok) { showSuccessAndReset(`✅ تم التسجيل المؤكد!`); fetchRecentActivity(); } 
+            else { alert("❌ فشل"); btnElement.innerText = "✅ تأكيد"; btnElement.disabled = false; }
+        } catch (e) { alert("خطأ"); } finally { confirmationWebhookUrl = ''; }
+    }
+
+    function showSuccessAndReset(msg) {
+        alert(msg);
+        document.getElementById('studentCode').value = "";
+        document.getElementById('result').style.display = 'none';
+        document.getElementById('studentCode').focus();
+        const btn = document.querySelector('.btn-confirm');
+        btn.innerText = "✅ تأكيد ودفع"; btn.disabled = false;
+    }
+
+    async function fetchRecentActivity() {
+        if (RECENT_URL.includes("...")) return; 
+        try {
+            const res = await fetch(RECENT_URL);
+            if (!res.ok) return;
+            const data = await res.json();
+            const tbody = document.getElementById('activityBody');
+            tbody.innerHTML = ""; 
+            if (data.length === 0) { tbody.innerHTML = "<tr><td colspan='4' style='text-align:center;'>لا توجد عمليات اليوم</td></tr>"; return; }
+            data.forEach(row => {
+                const date = new Date(row.created_at);
+                const timeStr = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+                const studentName = row.student_name || "غير معروف";
+                const studentCode = row.student_code || "---"; 
+                tbody.innerHTML += `<tr>
+                    <td style="font-weight:bold; color:#555;">${studentCode}</td>
+                    <td>${studentName}</td>
+                    <td class="amount-col">${row.amount} ج.م</td>
+                    <td>${timeStr}</td>
+                </tr>`;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function deleteStudent() {
+        if (!currentStudentData || !currentStudentData.id) return;
+        if (!confirm(`⚠️ حذف الطالب: "${currentStudentData.name}" نهائياً؟`)) return;
+        const btn = document.querySelector('.btn-delete');
+        btn.innerHTML = "⏳"; btn.disabled = true;
+        try {
+            const res = await fetch(DELETE_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: currentStudentData.id }) });
+            if (res.ok) { alert("✅ تم الحذف."); document.getElementById('result').style.display = 'none'; document.getElementById('studentCode').value = ""; document.getElementById('studentCode').focus(); fetchRecentActivity(); } 
+            else { alert("❌ خطأ"); }
+        } catch (e) { alert("خطأ"); } finally { btn.innerHTML = "🗑️"; btn.disabled = false; }
     }
 
     function openModal() { document.getElementById('addModal').style.display = "block"; }
     function closeModal() { document.getElementById('addModal').style.display = "none"; }
-    window.onclick = function(e) { if (e.target == document.getElementById('addModal')) closeModal(); }
+    function openEditModal() { document.getElementById('editModal').style.display = "block"; } 
+    function closeEditModal() { document.getElementById('editModal').style.display = "none"; }
+    function showDailyStats() { /* دالة الإحصائيات القديمة */ }
+    function closeStatsModal() { document.getElementById('statsModal').style.display = "none"; }
+    window.onclick = function(e) { if (e.target.classList.contains('modal')) e.target.style.display = "none"; }
     
-    document.getElementById("studentCode").addEventListener("keypress", function(e) {
-        if (e.key === "Enter") checkStudent();
-    });
+    document.getElementById("studentCode").addEventListener("keypress", function(e) { if (e.key === "Enter") checkStudent(); });
+    document.getElementById("priceField").addEventListener("keypress", function(e) { if (e.key === "Enter") confirmAttendance(); });
+</script>
+
+<div id="timeoutWarning" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 40px; border-radius: 15px; text-align: center; border: 4px solid #dc3545; width: 320px; box-shadow: 0 0 20px rgba(220, 53, 69, 0.5);">
+        <h1 style="font-size: 60px; margin: 0;">⏳</h1>
+        <h2 style="color: #dc3545; margin: 10px 0;">انتبه!</h2>
+        <p style="font-size: 18px;">ستنتهي الجلسة تلقائياً خلال:</p>
+        <h2 id="countdownTimer" style="font-size: 50px; color: #333; margin: 10px 0; font-family: monospace;">60</h2>
+        <p style="font-size: 14px; color: #777;">ثانية</p>
+    </div>
+</div>
+
+<script>
+    // ⚙️ إعدادات الوقت
+    const SESSION_DURATION = 30 * 60 * 1000; // 30 دقيقة
+    const WARNING_TIME = 60 * 1000;          // بدء ظهور النافذة (آخر دقيقة)
+    const ALERT_SOUND_TIME = 15 * 1000;      // بدء الصوت (آخر 15 ثانية)
+
+    // 🔊 إعداد الصوت
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playWarningBeep() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.type = 'square'; 
+        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
+        oscillator.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.2);
+    }
+
+    // 🔄 دالة فحص الجلسة + تحديث العداد العائم
+    function checkSession() {
+        const role = sessionStorage.getItem("user_role");
+        const startTime = sessionStorage.getItem("session_start");
+
+        // إذا لم يكن مسجلاً، اطرده لصفحة الدخول
+        if (!role || !startTime) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        const now = Date.now();
+        const elapsedTime = now - startTime;
+        const remainingTime = SESSION_DURATION - elapsedTime;
+
+        // --- تحديث العداد العائم (الجديد) ---
+        if (remainingTime > 0) {
+            const minutes = Math.floor(remainingTime / 60000);
+            const seconds = Math.floor((remainingTime % 60000) / 1000);
+            const displayStr = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            document.getElementById('timeDisplay').innerText = displayStr;
+
+            // تغيير اللون إذا قل عن 5 دقائق
+            const floatingTimer = document.getElementById('floatingTimer');
+            if (remainingTime < 5 * 60 * 1000) {
+                floatingTimer.style.backgroundColor = '#c0392b'; // أحمر داكن
+                floatingTimer.style.border = '2px solid #e74c3c';
+            } else {
+                floatingTimer.style.backgroundColor = '#2c3e50'; // اللون الأصلي
+                floatingTimer.style.border = '2px solid transparent';
+            }
+        }
+
+        // 1. انتهى الوقت
+        if (remainingTime <= 0) {
+            sessionStorage.clear();
+            alert("🛑 انتهت مدة الجلسة (30 دقيقة).\nيجب تسجيل الدخول مرة أخرى.");
+            window.location.href = "login.html";
+        } 
+        // 2. مرحلة التحذير (Popup)
+        else if (remainingTime <= WARNING_TIME) {
+            document.getElementById('timeoutWarning').style.display = 'flex';
+            const secondsLeft = Math.ceil(remainingTime / 1000);
+            document.getElementById('countdownTimer').innerText = secondsLeft;
+            
+            if (secondsLeft <= 10) {
+                document.getElementById('countdownTimer').style.color = "red";
+            }
+
+            if (remainingTime <= ALERT_SOUND_TIME) {
+                playWarningBeep();
+            }
+        }
+    }
+
+    // تشغيل الفحص كل ثانية
+    setInterval(checkSession, 1000);
+    checkSession(); // تشغيل فوري
+
+    // زر تسجيل الخروج (يستخدمه الزر في الهيدر إن وجد، أو يمكن إضافته)
+    function logout() {
+        if(confirm("هل تريد تسجيل الخروج؟")) {
+            sessionStorage.clear();
+            window.location.href = "login.html";
+        }
+    }
 </script>
 
 </body>
