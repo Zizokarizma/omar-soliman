@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | System Access</title>
+
+    <!-- 🔒 SECURITY PROTECTION LAYER -->
+    <script>
+        (function () {
+            'use strict';
+
+            // 🛡️ Disable Right-Click Context Menu
+            document.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // 🛡️ Disable Keyboard Shortcuts (DevTools, View Source, etc.)
+            document.addEventListener('keydown', function (e) {
+                // F12 - DevTools
+                if (e.key === 'F12' || e.keyCode === 123) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Ctrl+Shift+I - DevTools
+                if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Ctrl+Shift+J - Console
+                if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Ctrl+Shift+C - Element Inspector
+                if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Ctrl+U - View Source
+                if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Ctrl+S - Save Page
+                if (e.ctrlKey && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // 🛡️ DevTools Detection
+            let devToolsOpen = false;
+            const threshold = 160;
+
+            const checkDevTools = function () {
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+                if (widthThreshold || heightThreshold) {
+                    if (!devToolsOpen) {
+                        devToolsOpen = true;
+                        console.clear();
+                        console.log('%c⚠️ تحذير أمني!', 'color: red; font-size: 30px; font-weight: bold;');
+                        console.log('%cهذا النظام محمي. أي محاولة للتلاعب قد تؤدي لحظر حسابك.', 'color: orange; font-size: 16px;');
+                    }
+                } else {
+                    devToolsOpen = false;
+                }
+            };
+
+            setInterval(checkDevTools, 1000);
+
+            // 🛡️ Clear Console on Load
+            console.clear();
+            console.log('%c🛡️ نظام محمي', 'color: #3b82f6; font-size: 20px; font-weight: bold;');
+
+            // 🛡️ Disable Drag & Drop
+            document.addEventListener('dragstart', function (e) {
+                e.preventDefault();
+                return false;
+            });
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .sci-fi-bg {
+            background-color: #0f172a;
+            background-image: radial-gradient(at 50% 50%, #1e293b 0, transparent 50%), radial-gradient(at 100% 0%, #1e3a8a 0, transparent 50%);
+        }
+
+        .loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body class="sci-fi-bg h-screen flex items-center justify-center text-white">
+
+    <div id="loginCard"
+        class="w-full max-w-sm p-8 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-3xl shadow-2xl text-center">
+        <div class="mb-6 text-6xl">🛡️</div>
+        <h1 class="text-2xl font-black mb-2 text-blue-400">منطقة محظورة</h1>
+        <p class="text-slate-400 text-sm mb-8">يرجى إدخال بيانات الدخول للوصول للنظام</p>
+
+        <input type="text" id="username" placeholder="اسم المستخدم..."
+            class="w-full p-4 bg-black/50 border border-slate-600 rounded-xl text-center text-xl text-white focus:border-blue-500 focus:outline-none mb-4 transition">
+
+        <input type="password" id="passcode" placeholder="كلمة المرور..."
+            class="w-full p-4 bg-black/50 border border-slate-600 rounded-xl text-center text-xl tracking-widest text-white focus:border-blue-500 focus:outline-none mb-4 transition">
+
+        <button onclick="login()" id="loginBtn"
+            class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold shadow-lg shadow-blue-900/50 transition transform active:scale-95">
+            دخول للنظام 🚀
+        </button>
+
+        <p id="errorMsg" class="text-red-500 text-sm mt-4 hidden">🚫 بيانات الدخول غير صحيحة!</p>
+        <p id="loadingMsg" class="text-blue-400 text-sm mt-4 hidden animate-pulse">⏳ جاري التحقق...</p>
+    </div>
+
+    <script>
+        // ⚙️ إعدادات Supabase
+        const SUPABASE_URL = 'https://zwsyqqtnzqsdrfvpihyc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3c3lxcXRuenFzZHJmdnBpaHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDQzODAsImV4cCI6MjA4MzIyMDM4MH0.q30A_-UIF85yoUwG6kG3-mqphbaNGIZCPHHWSj5AdIA';
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 🔐 جميع كلمات المرور مخزنة بشكل آمن في Supabase
+
+        async function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('passcode').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const loginCard = document.getElementById('loginCard');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // إخفاء رسائل الخطأ السابقة
+            errorMsg.classList.add('hidden');
+
+            // التحقق من البيانات المدخلة
+            if (!username || !password) {
+                errorMsg.innerText = '🚫 يرجى إدخال اسم المستخدم وكلمة المرور!';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // إظهار حالة التحميل (كل التحقق يتم عبر الدالة الآمنة)
+            loadingMsg.classList.remove('hidden');
+            loginCard.classList.add('loading');
+            loginBtn.disabled = true;
+
+
+            try {
+                // 🔐 استخدام الدالة الآمنة للتحقق من كلمة المرور
+                const { data: users, error: verifyError } = await _supabase
+                    .rpc('verify_user_password', {
+                        p_username: username,
+                        p_password: password
+                    });
+
+                // التحقق من نجاح عملية التحقق
+                if (verifyError || !users || users.length === 0) {
+                    throw new Error('بيانات الدخول غير صحيحة');
+                }
+
+                const user = users[0];
+
+                // 2. حفظ بيانات المستخدم في sessionStorage
+                sessionStorage.setItem('current_user', user.username);
+                sessionStorage.setItem('user_role', user.role);
+                sessionStorage.setItem('admin_logged_in', 'true');
+
+                // 3. التحقق من وجود وردية مفتوحة لهذا المستخدم
+                const { data: openShift, error: shiftError } = await _supabase
+                    .from('shifts')
+                    .select('id')
+                    .eq('user_username', user.username)
+                    .eq('status', 'open')
+                    .single();
+
+                let shiftId;
+
+                if (openShift) {
+                    // وردية مفتوحة موجودة - استخدمها
+                    shiftId = openShift.id;
+                } else {
+                    // لا توجد وردية مفتوحة - إنشاء وردية جديدة
+                    const { data: newShift, error: createError } = await _supabase
+                        .from('shifts')
+                        .insert([{
+                            user_username: user.username,
+                            status: 'open',
+                            start_time: new Date().toISOString(),
+                            total_income: 0,
+                            total_expense: 0
+                        }])
+                        .select('id')
+                        .single();
+
+                    if (createError || !newShift) {
+                        throw new Error('خطأ في إنشاء الوردية');
+                    }
+
+                    shiftId = newShift.id;
+                }
+
+                // 4. حفظ معرف الوردية في sessionStorage
+                sessionStorage.setItem('current_shift_id', shiftId);
+
+                // 5. التوجيه حسب دور المستخدم
+                if (user.role === 'admin') {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'index.html';
+                }
+
+            } catch (e) {
+                console.error('Login error:', e);
+                errorMsg.innerText = '🚫 ' + (e.message || 'خطأ في تسجيل الدخول');
+                errorMsg.classList.remove('hidden');
+                errorMsg.classList.add('animate-pulse');
+            } finally {
+                loadingMsg.classList.add('hidden');
+                loginCard.classList.remove('loading');
+                loginBtn.disabled = false;
+            }
+        }
+
+        // الدخول بزر Enter
+        document.getElementById('passcode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+
+        document.getElementById('username').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('passcode').focus();
+        });
+
+        // التركيز التلقائي على حقل اسم المستخدم
+        document.getElementById('username').focus();
+    </script>
+</body>
+
+</html>
